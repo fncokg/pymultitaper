@@ -1,5 +1,6 @@
 site_name: pymultitaper
 docs_dir: mkdocs_docs
+site_url: https://fncokg.github.io/pymultitaper/docs/
 theme:
     name: "material"
 
