@@ -1,4 +1,5 @@
 site_name: pymultitaper
+docs_dir: mkdocs_docs
 theme:
     name: "material"
 
