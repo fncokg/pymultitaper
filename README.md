@@ -1,3 +1,4 @@
+![Comparions of multitaper spectrograms](https://github.com/fncokg/pymultitaper/blob/master/spectrogram.jpg)
 
 # pymultitaper
 

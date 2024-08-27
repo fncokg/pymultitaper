@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymultitaper"
-version = "1.0.1"
+version = "1.0.3"
 authors = [
   { name="Chao Kong", email="kongchao1998@gmail.com" },
 ]
@@ -21,3 +21,8 @@ dependencies = [
   "scipy",
   "matplotlib"
 ]
+
+[project.urls]
+Documentation = "https://fncokg.github.io/pymultitaper/"
+Repository = "https://github.com/fncokg/pymultitaper/"
+"Bug Tracker" = "https://github.com/fncokg/pymultitaper/issues"
