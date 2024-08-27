@@ -22,3 +22,9 @@ pip install pymultitaper
 ... )
 >>> fig,ax = plot_spectrogram(times,freqs,psd,cmap="viridis")
 ```
+
+# Examples
+
+![Comparions of multitaper spectrograms](https://github.com/fncokg/pymultitaper/blob/master/spectrogram.jpg)
+
+![Comparions of multitaper spectrums](https://github.com/fncokg/pymultitaper/blob/680bef2645a04f8849cfd5dd897ef26a3d809e7d/spectrum.jpg)
