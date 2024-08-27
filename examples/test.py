@@ -1,5 +1,3 @@
-import sys
-sys.path.append(r"D:\程序项目\PythonLibs\pymultitaper\src")
 from pymultitaper import multitaper_spectrogram as mt_sp, spectrogram as sp, plot_spectrogram, plot_spectrum
 from scipy.io import wavfile
 import matplotlib.pyplot as plt
