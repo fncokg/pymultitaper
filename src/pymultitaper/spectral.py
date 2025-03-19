@@ -94,8 +94,8 @@ def _spectrogram(data:NDArray,fs:int,time_step:float,win:NDArray,weights:NDArray
     psd_data *= 2
     if fmin == 0:
         psd_data[:,0] /= 2
-    if fmax == fs/2 and nfft % 2 == 1:
-        # if nfft is odd, the Nyquist frequency is exactly at the middle of the spectrum and has no duplicate
+    if fmax == fs/2 and nfft % 2 == 0:
+        # if nfft is even, the Nyquist frequency is exactly at the middle of the spectrum and has no duplicate
         psd_data[:,-1] /= 2
     if db_scale:
         psd_data = 10*np.log10(psd_data/p_ref**2)
