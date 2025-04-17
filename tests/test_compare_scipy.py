@@ -25,6 +25,7 @@ def test_compare_scipy(window_length_multiplier):
                                               time_step=ts,
                                               window_length=wl,
                                               db_scale=False,
+                                              boundary_pad=False,
                                               )
     n_ts = int(ts * fs)
     n_wl = int(wl * fs)

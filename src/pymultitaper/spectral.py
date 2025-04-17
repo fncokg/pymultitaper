@@ -27,7 +27,7 @@ def _get_1d_window(window_shape,n_winlen):
     win_arr = win_arr[:,None]
     return win_arr,weights
 
-def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArray,freq_range:list,detrend:Literal["constant","linear","off"],nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5) -> Tuple[NDArray,NDArray,NDArray]:
+def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArray,freq_range:list,detrend:Literal["constant","linear","off"],nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5,boundary_pad:bool=False) -> Tuple[NDArray,NDArray,NDArray]:
     """
     Core implementation of spectrogram (PSD) calculation.
 
@@ -44,6 +44,9 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         nfft (int): The number of FFT points, if `None`, will be set to the smallest power of 2 that is larger than the window length
         db_scale (bool): Whether to scale the PSD in dB
         p_ref (float): When db_scale is True, the reference pressure level in Pa
+        boundary_pad (bool): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. 
+            - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
+            - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
 
     Returns:
         freqs (n_freqs,): Frequency points of the spectrogram
@@ -57,6 +60,10 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     if freq_range is None:
         freq_range = [0,fs/2]
     fmin,fmax = freq_range
+
+    if boundary_pad:
+        n_pad = int(n_winlen/2)+1
+        data = np.pad(data,(n_pad,n_pad),'constant',constant_values=0)
 
     # Step 1: Frame the data
     # (n_frames,n_winlen)
@@ -81,7 +88,10 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     raw_freqs = fft.rfftfreq(nfft,1/fs)
     freqs_idx = np.where((raw_freqs >= fmin) & (raw_freqs <= fmax))[0]
     freqs = raw_freqs[freqs_idx]
-    times = np.arange(0,n_frames) * time_step + n_winlen/2/fs
+    if boundary_pad:
+        times = np.arange(0,n_frames) * time_step
+    else:
+        times = np.arange(0,n_frames) * time_step + n_winlen/2/fs
     # Note: we filter out the frequencies with frequency range, therefore implicitly filter out the negative frequencies
     fft_data = fft_data[:,freqs_idx,:]
     
@@ -104,7 +114,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     return freqs,times,psd_data
 
 
-def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,NW:float=4.0,n_tapers:Optional[int]=None,freq_range:Optional[list]=None,weight_type:Literal["unity","eig"]="unity",detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
+def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,NW:float=4.0,n_tapers:Optional[int]=None,freq_range:Optional[list]=None,weight_type:Literal["unity","eig"]="unity",detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5,boundary_pad:bool=False)-> Tuple[NDArray,NDArray,NDArray]:
     """
     Compute the multitaper PSD of the input data.
 
@@ -140,9 +150,9 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
     tapers,weights = _get_dpss_windows(n_winlen,NW,n_tapers,weight_type)
-    return _spectrogram(data=data,fs=fs,time_step=time_step,win=tapers,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref)
+    return _spectrogram(data=data,fs=fs,time_step=time_step,win=tapers,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref,boundary_pad=boundary_pad)
 
-def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
+def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5,boundary_pad:bool=False)-> Tuple[NDArray,NDArray,NDArray]:
     """
     Compute the ordinary (single-taper) PSD of the input data. This is similar to `scipy.signal.spectrogram`.
 
@@ -169,7 +179,7 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
     win,weights = _get_1d_window(window_shape,n_winlen)
-    return _spectrogram(data=data,fs=fs,time_step=time_step,win=win,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref)
+    return _spectrogram(data=data,fs=fs,time_step=time_step,win=win,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref,boundary_pad=boundary_pad)
 
 def plot_spectrogram(times:NDArray,freqs:NDArray,psd:NDArray,ax:Optional[plt.Axes]=None,**kwargs)-> tuple:
     """
