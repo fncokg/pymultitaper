@@ -45,6 +45,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         db_scale (bool): Whether to scale the PSD in dB
         p_ref (float): When db_scale is True, the reference pressure level in Pa
         boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
+
             - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
             - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
 
@@ -132,6 +133,7 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         db_scale (bool, optional): Whether convert the result to db scale, i.e. 10log10(psd/p_ref**2). Defaults to True.
         p_ref (float, optional): If `db_scale` is `True`, the `p_ref` value used in the dB conversion. Defaults to 2e-5.
         boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
+
             - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
             - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
     
@@ -139,8 +141,8 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         The value of 2W is the regularization bandwidth. Typically, we choose W to be a small multiple of the fundamental frequency 1/(N*dt) (where N is the number of samples in the data), i.e. W=i/(N*dt). The value of the parameter `NW` here is in fact the value of i (when dt is seen as 1). There's a trade-off between frequency resolution and variance reduction: A larger `NW` will reduce the variance of the PSD estimate, but also reduce the frequency resolution. 
 
     Returns:
-        times (NDArray): (n_frames,) Time points of each frame
         freqs (NDArray): (n_freqs,) Frequency points of the spectrogram
+        times (NDArray): (n_frames,) Time points of each frame
         psd (NDArray): (n_freqs,n_frames) PSD spectrogram
     
     Examples:
@@ -171,12 +173,13 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
         db_scale (bool, optional): Whether convert the result to db scale, i.e. 10log10(psd/p_ref**2). Defaults to True.
         p_ref (float, optional): If `db_scale` is `True`, the `p_ref` value used in the dB conversion. Defaults to 2e-5.
         boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
+
             - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
             - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
 
     Returns:
-        times (NDArray): (n_frames,) Time points of each frame
         freqs (NDArray): (n_freqs,) Frequency points of the spectrogram
+        times (NDArray): (n_frames,) Time points of each frame
         psd (NDArray): (n_freqs,n_frames) PSD spectrogram
     
     Examples:
