@@ -40,6 +40,6 @@ def test_compare_scipy(window_length_multiplier):
     assert st_times.shape == sc_times.shape
     assert st_spec.shape == st_spec.shape
 
-    assert np.allclose(st_times, sc_times - sc_times[0])
+    assert np.allclose(st_times, sc_times)
     assert np.allclose(st_freqs, sc_freqs)
     assert np.allclose(st_spec, sc_spec)

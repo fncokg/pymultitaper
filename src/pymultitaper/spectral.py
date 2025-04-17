@@ -81,7 +81,7 @@ def _spectrogram(data:NDArray,fs:int,time_step:float,win:NDArray,weights:NDArray
     raw_freqs = fft.rfftfreq(nfft,1/fs)
     freqs_idx = np.where((raw_freqs >= fmin) & (raw_freqs <= fmax))[0]
     freqs = raw_freqs[freqs_idx]
-    times = np.arange(0,n_frames) * time_step
+    times = np.arange(0,n_frames) * time_step + n_winlen/2/fs
     # Note: we filter out the frequencies with frequency range, therefore implicitly filter out the negative frequencies
     fft_data = fft_data[:,freqs_idx,:]
     
