@@ -46,8 +46,8 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         p_ref (float): When db_scale is True, the reference pressure level in Pa
 
     Returns:
-        times (n_frames,): Time points of each frame
         freqs (n_freqs,): Frequency points of the spectrogram
+        times (n_frames,): Time points of each frame
         psd (n_freqs,n_frames): PSD spectrogram
     """
     # Prepare arguments
@@ -101,7 +101,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         psd_data = 10*np.log10(psd_data/p_ref**2)
     # (nfft,n_frames)
     psd_data = psd_data.T
-    return times,freqs,psd_data
+    return freqs,times,psd_data
 
 
 def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:float,NW:float=4.0,n_tapers:Optional[int]=None,freq_range:Optional[list]=None,weight_type:Literal["unity","eig"]="unity",detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:

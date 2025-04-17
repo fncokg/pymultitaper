@@ -20,7 +20,7 @@ def test_compare_scipy(window_length_multiplier):
     ts = 0.01
     wl = ts * window_length_multiplier
 
-    st_times, st_freqs, st_spec = spectrogram(data,
+    st_freqs, st_times, st_spec = spectrogram(data,
                                               fs=fs,
                                               time_step=ts,
                                               window_length=wl,
