@@ -146,7 +146,7 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         psd (NDArray): (n_freqs,n_frames) PSD spectrogram
     
     Examples:
-        >>> times,freqs,psd = multitaper_spectrogram(data,fs,time_step=0.001,window_length=0.005,NW=4)
+        >>> freqs,times,psd = multitaper_spectrogram(data,fs,time_step=0.001,window_length=0.005,NW=4)
     """
     # (nfft,n_frames)
     if n_tapers is None:
@@ -183,7 +183,7 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
         psd (NDArray): (n_freqs,n_frames) PSD spectrogram
     
     Examples:
-        >>> times,freqs,psd = spectrogram(data,fs,time_step=0.001,window_length=0.005)
+        >>> freqs,times,psd = spectrogram(data,fs,time_step=0.001,window_length=0.005)
     """
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
