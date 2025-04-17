@@ -104,7 +104,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     return freqs,times,psd_data
 
 
-def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:float,NW:float=4.0,n_tapers:Optional[int]=None,freq_range:Optional[list]=None,weight_type:Literal["unity","eig"]="unity",detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
+def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,NW:float=4.0,n_tapers:Optional[int]=None,freq_range:Optional[list]=None,weight_type:Literal["unity","eig"]="unity",detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
     """
     Compute the multitaper PSD of the input data.
 
@@ -137,11 +137,12 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:f
     if n_tapers is None:
         # Note: NW may be a float number
         n_tapers = np.floor(2*NW-1).astype(int)
+    window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
     tapers,weights = _get_dpss_windows(n_winlen,NW,n_tapers,weight_type)
     return _spectrogram(data=data,fs=fs,time_step=time_step,win=tapers,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref)
 
-def spectrogram(data:NDArray,fs:float,time_step:float,window_length:float,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
+def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5)-> Tuple[NDArray,NDArray,NDArray]:
     """
     Compute the ordinary (single-taper) PSD of the input data. This is similar to `scipy.signal.spectrogram`.
 
@@ -165,7 +166,7 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:float,window
     Examples:
         >>> times,freqs,psd = spectrogram(data,fs,time_step=0.001,window_length=0.005)
     """
-    
+    window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
     win,weights = _get_1d_window(window_shape,n_winlen)
     return _spectrogram(data=data,fs=fs,time_step=time_step,win=win,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref)
