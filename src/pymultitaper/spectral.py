@@ -114,7 +114,7 @@ def multitaper_spectrogram(data:NDArray,fs:int,time_step:float,window_length:flo
         time_step (float): Time step between frames in seconds
         window_length (float): Window length in seconds
         NW (float, optional): NW value, see notes for details. Defaults to 4.0.
-        n_tapers (Optional[int], optional): The max number of tapers, if `None`, will be set to NW*2+1. Defaults to None.
+        n_tapers (Optional[int], optional): The max number of tapers, if `None`, will be set to NW*2-1. Defaults to None.
         freq_range (Optional[list], optional): The desired frequency range. If `None`, will be set to [0, fs/2]. Defaults to None.
         weight_type (Literal["unity","eig"], optional): The type of weights among tapers. Defaults to "unity".
         detrend (Literal["constant","linear","off"], optional): Whether and how to detrend the signal. Defaults to "constant".
