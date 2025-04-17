@@ -44,7 +44,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         nfft (int): The number of FFT points, if `None`, will be set to the smallest power of 2 that is larger than the window length
         db_scale (bool): Whether to scale the PSD in dB
         p_ref (float): When db_scale is True, the reference pressure level in Pa
-        boundary_pad (bool): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. 
+        boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
             - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
             - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
 
@@ -122,7 +122,7 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         data (NDArray): (n_samples,) Input data
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
-        window_length (float): Window length in seconds
+        window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.
         NW (float, optional): NW value, see notes for details. Defaults to 4.0.
         n_tapers (Optional[int], optional): The max number of tapers, if `None`, will be set to NW*2-1. Defaults to None.
         freq_range (Optional[list], optional): The desired frequency range. If `None`, will be set to [0, fs/2]. Defaults to None.
@@ -131,6 +131,9 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         nfft (Optional[int], optional): The number of FFT points. If `None`, will be set to the smallest power of 2 that is larger than the window length. Defaults to None.
         db_scale (bool, optional): Whether convert the result to db scale, i.e. 10log10(psd/p_ref**2). Defaults to True.
         p_ref (float, optional): If `db_scale` is `True`, the `p_ref` value used in the dB conversion. Defaults to 2e-5.
+        boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
+            - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
+            - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
     
     Notes:
         The value of 2W is the regularization bandwidth. Typically, we choose W to be a small multiple of the fundamental frequency 1/(N*dt) (where N is the number of samples in the data), i.e. W=i/(N*dt). The value of the parameter `NW` here is in fact the value of i (when dt is seen as 1). There's a trade-off between frequency resolution and variance reduction: A larger `NW` will reduce the variance of the PSD estimate, but also reduce the frequency resolution. 
@@ -160,13 +163,16 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
         data (NDArray): (n_samples,) Input data
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
-        window_length (float): Window length in seconds
+        window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.
         window_shape (Union[str,tuple], optional): The shape of the window function. Defaults to "hamming".
         freq_range (Optional[list], optional): The desired frequency range. If `None`, will be set to [0, fs/2]. Defaults to None.
         detrend (Literal["constant","linear","off"], optional): Whether and how to detrend the signal. Defaults to "constant".
         nfft (Optional[int], optional): The number of FFT points. If `None`, will be set to the smallest power of 2 that is larger than the window length. Defaults to None.
         db_scale (bool, optional): Whether convert the result to db scale, i.e. 10log10(psd/p_ref**2). Defaults to True.
         p_ref (float, optional): If `db_scale` is `True`, the `p_ref` value used in the dB conversion. Defaults to 2e-5.
+        boundary_pad (bool, optional): Whether to pad the data with zeros at the beginning and end. This is useful when the data is not evenly divisible by the window length and time step. By default `False`.
+            - If `True`, the data will be padded with zeros at the beginning and end, so that the first frame is centered on the first sample of data, and all samples are included in (at least) one frame.
+            - If `False`, the first frame is centered at `window_length/2` seconds after the first sample, and samples after `n_frames*time_step+window_length` seconds are ignored.
 
     Returns:
         times (NDArray): (n_frames,) Time points of each frame
