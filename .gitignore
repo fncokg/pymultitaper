@@ -1,3 +1,5 @@
 dist
 *.wav
 *.egg-info
+__pycache__
+.*
