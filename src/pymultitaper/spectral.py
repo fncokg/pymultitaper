@@ -1,17 +1,51 @@
 from typing import Literal, Tuple, Optional, Union
 
-import numpy as np
 from numpy.typing import NDArray
 import matplotlib.pyplot as plt
 
-from scipy import signal
-from scipy import fft
+# CPU backend
+import numpy as np
+import scipy.signal as sci_signal
+import scipy.fft as sci_fft
 
+# GPU backend
+import cupy as cp
+import cupyx.scipy.signal as cp_signal
+import cupyx.scipy.fft as cp_fft
 
-def _get_dpss_windows(n_winlen,NW,n_tapers,weight_type="unity"):
-    tapers,eigns = signal.windows.dpss(n_winlen,NW,n_tapers,return_ratios=True)
+class ArrayBackend:
+    def __init__(self,backend:Literal["numpy","cupy"]):
+        if backend == "numpy":
+            self.xp = np
+            self.signal = sci_signal
+            self.fft = sci_fft
+        elif backend == "cupy":
+            self.xp = cp
+            self.signal = cp_signal
+            self.fft = cp_fft
+        else:
+            raise ValueError(f"Unsupported backend: {backend}")
+    
+    @staticmethod
+    def like(arr):
+        if isinstance(arr, np.ndarray):
+            return ArrayBackend("numpy")
+        elif isinstance(arr, cp.ndarray):
+            return ArrayBackend("cupy")
+        else:
+            raise ValueError(f"Unsupported array type: {type(arr)}")
+
+def backend_like(func):
+    def wrapper(*args,like=None, **kwargs):
+        backend = ArrayBackend.like(like) if like is not None else ArrayBackend("numpy")
+        return func(*args,backend=backend, **kwargs)
+    return wrapper
+
+@backend_like
+def _get_dpss_windows(n_winlen,NW,n_tapers,weight_type="unity",backend=None):
+    tapers,eigns = backend.signal.windows.dpss(n_winlen,NW,n_tapers,return_ratios=True)
     if weight_type == "unity":
-        weights = np.ones(n_tapers) / n_tapers
+        weights = backend.xp.ones(n_tapers) / n_tapers
     elif weight_type == "eig":
         weights = eigns / n_tapers
     else:
@@ -20,9 +54,10 @@ def _get_dpss_windows(n_winlen,NW,n_tapers,weight_type="unity"):
     tapers = tapers.T
     return tapers,weights
 
-def _get_1d_window(window_shape,n_winlen):
-    win_arr = signal.get_window(window_shape,n_winlen)
-    weights = np.ones(1)
+@backend_like
+def _get_1d_window(window_shape,n_winlen,backend=None):
+    win_arr = backend.signal.get_window(window_shape,n_winlen)
+    weights = backend.xp.ones(1)
     # (n_winlen,1)
     win_arr = win_arr[:,None]
     return win_arr,weights
@@ -56,6 +91,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     """
     # Prepare arguments
     # win: (n_winlen,n_wins)
+    backend = ArrayBackend.like(data)
     n_winlen = win.shape[0]
     n_tstep = int(time_step*fs)
     if freq_range is None:
@@ -64,44 +100,44 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
 
     if boundary_pad:
         n_pad = int(n_winlen/2)+1
-        data = np.pad(data,(n_pad,n_pad),'constant',constant_values=0)
+        data = backend.xp.pad(data,(n_pad,n_pad),'constant',constant_values=0)
 
     # Step 1: Frame the data
     # (n_frames,n_winlen)
-    frames = np.lib.stride_tricks.sliding_window_view(data,n_winlen,writeable=False)[::n_tstep]
+    frames = backend.xp.lib.stride_tricks.sliding_window_view(data,n_winlen,writeable=False)[::n_tstep]
     n_frames = frames.shape[0]
 
     # Step 2: Detrend (if necessary)
     if detrend != "off":
-        frames = signal.detrend(frames,axis=1,type=detrend)
+        frames = backend.signal.detrend(frames,axis=1,type=detrend)
     
     # Step 3: Windowing
     # (n_frames,n_winlen,n_wins) = (n_frames,n_winlen,1) * (1,n_winlen,n_wins)
     wined_frames = frames[...,None] * win[None,...]
 
     # Step 4: FFT
-    nfft = 2**int(np.ceil(np.log2(n_winlen))) if nfft is None else nfft
+    nfft = 2**int(backend.xp.ceil(backend.xp.log2(n_winlen))) if nfft is None else nfft
     # (n_frames,nfft,n_wins)
     # zero-padding is automatically done in `fft.rfft`
-    fft_data = fft.rfft(wined_frames,n=nfft,axis=1)
+    fft_data = backend.fft.rfft(wined_frames,n=nfft,axis=1)
 
     # Step 5: Calculate frequencies and time points
-    raw_freqs = fft.rfftfreq(nfft,1/fs)
-    freqs_idx = np.where((raw_freqs >= fmin) & (raw_freqs <= fmax))[0]
+    raw_freqs = backend.fft.rfftfreq(nfft,1/fs)
+    freqs_idx = backend.xp.where((raw_freqs >= fmin) & (raw_freqs <= fmax))[0]
     freqs = raw_freqs[freqs_idx]
     if boundary_pad:
-        times = np.arange(0,n_frames) * time_step
+        times = backend.xp.arange(0,n_frames) * time_step
     else:
-        times = np.arange(0,n_frames) * time_step + n_winlen/2/fs
+        times = backend.xp.arange(0,n_frames) * time_step + n_winlen/2/fs
     # Note: we filter out the frequencies with frequency range, therefore implicitly filter out the negative frequencies
     fft_data = fft_data[:,freqs_idx,:]
     
     # Step 6: Calculate PSD and average over window types
     # (n_wins,) We need to scale the PSD by the sum of the square of the window and fs
-    _scale = 1 / (fs * np.sum(win**2,axis=0))
+    _scale = 1 / (fs * backend.xp.sum(win**2,axis=0))
     scale = _scale * weights
     psd_data = fft_data.real**2 + fft_data.imag**2
-    psd_data = np.dot(psd_data,scale)
+    psd_data = backend.xp.dot(psd_data,scale)
     psd_data *= 2
     if fmin == 0:
         psd_data[:,0] /= 2
@@ -109,7 +145,7 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
         # if nfft is even, the Nyquist frequency is exactly at the middle of the spectrum and has no duplicate
         psd_data[:,-1] /= 2
     if db_scale:
-        psd_data = 10*np.log10(psd_data/p_ref**2)
+        psd_data = 10*backend.xp.log10(psd_data/p_ref**2)
     # (nfft,n_frames)
     psd_data = psd_data.T
     return freqs,times,psd_data
@@ -149,12 +185,13 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         >>> freqs,times,psd = multitaper_spectrogram(data,fs,time_step=0.001,window_length=0.005,NW=4)
     """
     # (nfft,n_frames)
+    backend = ArrayBackend.like(data)
     if n_tapers is None:
         # Note: NW may be a float number
-        n_tapers = np.floor(2*NW-1).astype(int)
+        n_tapers = backend.xp.floor(2*NW-1).astype(int)
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
-    tapers,weights = _get_dpss_windows(n_winlen,NW,n_tapers,weight_type)
+    tapers,weights = _get_dpss_windows(n_winlen,NW,n_tapers,weight_type,like=data)
     return _spectrogram(data=data,fs=fs,time_step=time_step,win=tapers,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref,boundary_pad=boundary_pad)
 
 def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5,boundary_pad:bool=False)-> Tuple[NDArray,NDArray,NDArray]:
@@ -187,7 +224,7 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
     """
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
-    win,weights = _get_1d_window(window_shape,n_winlen)
+    win,weights = _get_1d_window(window_shape,n_winlen,like=data)
     return _spectrogram(data=data,fs=fs,time_step=time_step,win=win,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref,boundary_pad=boundary_pad)
 
 def plot_spectrogram(times:NDArray,freqs:NDArray,psd:NDArray,ax:Optional[plt.Axes]=None,**kwargs)-> tuple:
@@ -246,7 +283,8 @@ def plot_spectrum(times:NDArray,freqs:NDArray,psd:NDArray,time:float,ax:Optional
         fig,ax = plt.subplots()
     else:
         fig = ax.figure
-    idx = np.argmin(np.abs(times-time))
+    backend = ArrayBackend.like(times)
+    idx = backend.xp.argmin(backend.xp.abs(times-time))
     ax.plot(freqs,psd[:,idx],**kwargs)
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("PSD (dB)")
