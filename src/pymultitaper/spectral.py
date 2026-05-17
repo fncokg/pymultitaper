@@ -9,9 +9,14 @@ import scipy.signal as sci_signal
 import scipy.fft as sci_fft
 
 # GPU backend
-import cupy as cp
-import cupyx.scipy.signal as cp_signal
-import cupyx.scipy.fft as cp_fft
+try:
+    import cupy as cp
+    import cupyx.scipy.signal as cp_signal
+    import cupyx.scipy.fft as cp_fft
+except ImportError:
+    cp = None
+    cp_signal = None
+    cp_fft = None
 
 class ArrayBackend:
     def __init__(self,backend:Literal["numpy","cupy"]):
@@ -20,6 +25,8 @@ class ArrayBackend:
             self.signal = sci_signal
             self.fft = sci_fft
         elif backend == "cupy":
+            if cp is None:
+                raise ImportError("cupy is not installed, so the GPU backend is unavailable")
             self.xp = cp
             self.signal = cp_signal
             self.fft = cp_fft
@@ -30,7 +37,7 @@ class ArrayBackend:
     def like(arr):
         if isinstance(arr, np.ndarray):
             return ArrayBackend("numpy")
-        elif isinstance(arr, cp.ndarray):
+        elif cp is not None and isinstance(arr, cp.ndarray):
             return ArrayBackend("cupy")
         else:
             raise ValueError(f"Unsupported array type: {type(arr)}")
