@@ -13,6 +13,14 @@ try:
     import cupy as cp
     import cupyx.scipy.signal as cp_signal
     import cupyx.scipy.fft as cp_fft
+
+    def cp_dpss_windows(*args,**kwargs):
+        # cupyx does not have dpss implementation
+        # currently, we compute the dpss windows on CPU and transfer to GPU, which is not very efficient, but should be fine for most use cases since the number of tapers is usually small
+        tapers,eigns = sci_signal.windows.dpss(*args,**kwargs)
+        return cp.asarray(tapers),cp.asarray(eigns)
+    
+    cp_signal.windows.dpss = cp_dpss_windows
 except ImportError:
     cp = None
     cp_signal = None
@@ -195,7 +203,8 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
     backend = ArrayBackend.like(data)
     if n_tapers is None:
         # Note: NW may be a float number
-        n_tapers = backend.xp.floor(2*NW-1).astype(int)
+        # We DONOT need a cupy float here
+        n_tapers = np.floor(2*NW-1).astype(int)
     window_length = time_step if window_length is None else window_length
     n_winlen = int(window_length*fs)
     tapers,weights = _get_dpss_windows(n_winlen,NW,n_tapers,weight_type,like=data)
