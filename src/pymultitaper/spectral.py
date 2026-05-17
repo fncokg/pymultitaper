@@ -253,6 +253,9 @@ def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[flo
     win,weights = _get_1d_window(window_shape,n_winlen,like=data)
     return _spectrogram(data=data,fs=fs,time_step=time_step,win=win,weights=weights,freq_range=freq_range,detrend=detrend,nfft=nfft,db_scale=db_scale,p_ref=p_ref,boundary_pad=boundary_pad)
 
+# A helper function to convert cupy arrays to numpy arrays for plotting
+_as_np = lambda x: x.get() if isinstance(x,cp.ndarray) else x
+
 def plot_spectrogram(times:NDArray,freqs:NDArray,psd:NDArray,ax:Optional[plt.Axes]=None,**kwargs)-> tuple:
     """
     Plot the spectrogram.
@@ -278,6 +281,7 @@ def plot_spectrogram(times:NDArray,freqs:NDArray,psd:NDArray,ax:Optional[plt.Axe
         fig,ax = plt.subplots()
     else:
         fig = ax.figure
+    times,freqs,psd = map(_as_np,[times,freqs,psd])
     mesh = ax.pcolormesh(times,freqs,psd,**kwargs)
     ax.set_xlabel("Time (s)")
     ax.set_ylabel("Frequency (Hz)")
@@ -309,8 +313,8 @@ def plot_spectrum(times:NDArray,freqs:NDArray,psd:NDArray,time:float,ax:Optional
         fig,ax = plt.subplots()
     else:
         fig = ax.figure
-    backend = ArrayBackend.like(times)
-    idx = backend.xp.argmin(backend.xp.abs(times-time))
+    times,freqs,psd = map(_as_np,[times,freqs,psd])
+    idx = np.argmin(np.abs(times-time))
     ax.plot(freqs,psd[:,idx],**kwargs)
     ax.set_xlabel("Frequency (Hz)")
     ax.set_ylabel("PSD")
