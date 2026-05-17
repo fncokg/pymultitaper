@@ -209,7 +209,6 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
         >>> freqs,times,psd = multitaper_spectrogram(data,fs,time_step=0.001,window_length=0.005,NW=4)
     """
     # (nfft,n_frames)
-    backend = ArrayBackend.like(data)
     if n_tapers is None:
         # Note: NW may be a float number
         # We DONOT need a cupy float here
@@ -314,6 +313,6 @@ def plot_spectrum(times:NDArray,freqs:NDArray,psd:NDArray,time:float,ax:Optional
     idx = backend.xp.argmin(backend.xp.abs(times-time))
     ax.plot(freqs,psd[:,idx],**kwargs)
     ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("PSD (dB)")
+    ax.set_ylabel("PSD")
     ax.set_title(f"Spectrum at time {time}s")
     return fig,ax
