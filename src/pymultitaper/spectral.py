@@ -14,13 +14,13 @@ try:
     import cupyx.scipy.signal as cp_signal
     import cupyx.scipy.fft as cp_fft
 
-    def cp_dpss_windows(*args,**kwargs):
+    def _cp_dpss_windows(*args,**kwargs):
         # cupyx does not have dpss implementation
         # currently, we compute the dpss windows on CPU and transfer to GPU, which is not very efficient, but should be fine for most use cases since the number of tapers is usually small
         tapers,eigns = sci_signal.windows.dpss(*args,**kwargs)
         return cp.asarray(tapers),cp.asarray(eigns)
     
-    cp_signal.windows.dpss = cp_dpss_windows
+    cp_signal.windows.dpss = _cp_dpss_windows
 except ImportError:
     cp = None
     cp_signal = None
@@ -28,6 +28,7 @@ except ImportError:
 
 class ArrayBackend:
     def __init__(self,backend:Literal["numpy","cupy"]):
+        self.backend = backend
         if backend == "numpy":
             self.xp = np
             self.signal = sci_signal
@@ -49,7 +50,11 @@ class ArrayBackend:
             return ArrayBackend("cupy")
         else:
             raise ValueError(f"Unsupported array type: {type(arr)}")
+    
+    def __eq__(self,other):
+        return self.backend == other.backend
 
+# A decorator letting the function accept an additional `like` argument to specify the backend based on the input array type.
 def backend_like(func):
     def wrapper(*args,like=None, **kwargs):
         backend = ArrayBackend.like(like) if like is not None else ArrayBackend("numpy")
@@ -81,14 +86,14 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     """
     Core implementation of spectrogram (PSD) calculation.
 
-    The spectrogram is calculated when multiple window array and their weights are given. The result is the weighted sum of the PSDs of each windowed frame (when the weights sum to 1, it is the weighted average PSD).
+    The spectrogram is calculated when multiple window array and their weights are given. The result is the weighted sum of the PSDs of each windowed frame (when the weights sum to 1, it is the weighted average PSD). The computation backend (CPU or GPU) is automatically determined by the type of the input arrays (numpy or cupy).
 
     Args:
-        data (NDArray): (n_samples,)
+        data (NDArray): (n_samples,) Input data. Can be either a numpy array or a cupy array. The backend (CPU or GPU) will be automatically determined based on the type of the input data.
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
-        win (NDArray): (n_winlen,n_wins) Window arrays from different window functions
-        weights (NDArray): (n_wins,) Weights for each window array
+        win (NDArray): (n_winlen,n_wins) Window arrays from different window functions. Should be of the same backend as `data`.
+        weights (NDArray): (n_wins,) Weights for each window array. Should be of the same backend as `data`.
         freq_range (list): [fmin,fmax] Frequency range to keep in the spectrogram, if `None`, [0,fs/2] is used
         detrend (str): {'constant','linear','off'} Detrend method
         nfft (int): The number of FFT points, if `None`, will be set to the smallest power of 2 that is larger than the window length
@@ -107,6 +112,8 @@ def _spectrogram(data:NDArray,fs:float,time_step:float,win:NDArray,weights:NDArr
     # Prepare arguments
     # win: (n_winlen,n_wins)
     backend = ArrayBackend.like(data)
+    if ArrayBackend.like(win) != backend or ArrayBackend.like(weights) != backend:
+        raise ValueError("The backend of win and weights must be the same as that of data")
     n_winlen = win.shape[0]
     n_tstep = int(time_step*fs)
     if freq_range is None:
@@ -170,8 +177,10 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
     """
     Compute the multitaper PSD of the input data.
 
+    The computation backend (CPU or GPU) is automatically determined by the type of the input arrays (numpy or cupy).
+
     Args:
-        data (NDArray): (n_samples,) Input data
+        data (NDArray): (n_samples,) Input data. Can be either a numpy array or a cupy array. The backend (CPU or GPU) will be automatically determined based on the type of the input data.
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
         window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.
@@ -212,10 +221,12 @@ def multitaper_spectrogram(data:NDArray,fs:float,time_step:float,window_length:O
 
 def spectrogram(data:NDArray,fs:float,time_step:float,window_length:Optional[float]=None,window_shape:Union[str,tuple]="hamming",freq_range:Optional[list]=None,detrend:Literal["constant","linear","off"]="constant",nfft:Optional[int]=None,db_scale:bool=True,p_ref:float=2e-5,boundary_pad:bool=False)-> Tuple[NDArray,NDArray,NDArray]:
     """
-    Compute the ordinary (single-taper) PSD of the input data. This is similar to `scipy.signal.spectrogram`.
+    Compute the ordinary (single-taper) PSD of the input data.
+    
+    This is similar to `scipy.signal.spectrogram` except that it supports also GPU computation. The computation backend (CPU or GPU) is automatically determined by the type of the input arrays (numpy or cupy).
 
     Args:
-        data (NDArray): (n_samples,) Input data
+        data (NDArray): (n_samples,) Input data. Can be either a numpy array or a cupy array. The backend (CPU or GPU) will be automatically determined based on the type of the input data.
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
         window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.
