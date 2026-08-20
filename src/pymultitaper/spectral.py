@@ -163,8 +163,10 @@ def multitaper_spectrogram(
 
     Args:
         data (NDArray): (..., n_samples) Input data:
+
             - Can be of any shape **(including 1d array)**, as long as the last dimension is the time dimension (n_samples). The spectrogram computation will be applied to the last dimension, and the other dimensions will be treated as batch dimensions and preserved in the output.
             - Can be either a numpy array or a cupy array. The backend (CPU or GPU) will be automatically determined based on the type of the input data.
+
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
         window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.
@@ -235,8 +237,10 @@ def spectrogram(
 
     Args:
         data (NDArray): (..., n_samples) Input data:
+
             - Can be of any shape **(including 1d array)**, as long as the last dimension is the time dimension (n_samples). The spectrogram computation will be applied to the last dimension, and the other dimensions will be treated as batch dimensions and preserved in the output.
             - Can be either a numpy array or a cupy array. The backend (CPU or GPU) will be automatically determined based on the type of the input data.
+
         fs (float): Sampling frequency
         time_step (float): Time step between frames in seconds
         window_length (float, optional): Window length in seconds. If `None`, will be set to the same as `time_step`. Defaults to None.

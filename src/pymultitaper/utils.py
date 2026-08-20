@@ -16,9 +16,12 @@ def batched_signal(
     Args:
         signal_list (list): A list of 1D numpy or cupy arrays.
         padding_strategy (str): The strategy for padding. Options are:
+
             - "max": Pad all signals to the length of the longest signal in the list.
             - "max_length": Pad all signals to the specified `max_length`. If a signal is longer than `max_length`, it will be truncated.
+
         max_length (int, optional): The maximum length to pad/truncate signals to when using the "max_length" strategy. Required if `padding_strategy` is "max_length".
+        return_mask (bool): If True, also return a boolean mask indicating the valid (non-padded) entries in the output array.
 
     Returns:
         NDArray: A 2D array where each row corresponds to a signal from `signal_list`, padded with zeros as necessary.
