@@ -88,7 +88,12 @@ def _spectrogram(
     if boundary_pad:
         n_pad = int(n_winlen / 2) + 1
         # pad only the last dimension
-        data = backend.xp.pad(data, {-1: (n_pad, n_pad)}, "constant", constant_values=0)
+        # the following is equivalent to `np.pad(data,pad_width={-1: (n_pad, n_pad)},...)`, but this feature (`pad_width` as a dict) is not supported in cupy
+        pad_width = [(0, 0)] * data.ndim
+        pad_width[-1] = (n_pad, n_pad)
+        data = backend.xp.pad(
+            data, pad_width=pad_width, mode="constant", constant_values=0
+        )
     # Step 1: Frame the data
     # (n_frames,n_winlen)
     frames = backend.xp.lib.stride_tricks.sliding_window_view(
