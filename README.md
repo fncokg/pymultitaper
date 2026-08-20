@@ -16,16 +16,6 @@ Install via pip:
 pip install pymultitaper
 ```
 
-GPU computation is supported in a pre-release version. To install the GPU-enabled version, use:
-
-```bash
-pip install --pre pymultitaper
-```
-
-**GPU support requires `CuPy`**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
-
-*Note: `Cupy` is an optional dependency. If you do not have `CuPy` installed, `pymultitaper` will still work using the CPU backend.*
-
 # Usage
 
 ```python
@@ -39,6 +29,8 @@ pip install --pre pymultitaper
 ```
 
 # GPU Support
+
+**GPU support requires `CuPy`**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
 
 GPU usage is automatic: if you pass a CuPy array into the spectrogram functions, `pymultitaper` will use the GPU backend. NumPy arrays still use the CPU backend.
 
