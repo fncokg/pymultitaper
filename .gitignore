@@ -1,9 +1,10 @@
 dist
 *.wav
 *.egg-info
-__pycache__
+**/__pycache__
 .pytest_cache
 .vscode
 site
 .venv
 uv.lock
+build
