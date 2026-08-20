@@ -346,7 +346,11 @@ def spectrogram(
 
 
 # A helper function to convert cupy arrays to numpy arrays for plotting
-_as_np = lambda x: x.get() if isinstance(x, cp.ndarray) else x
+def _as_np(x):
+    try:
+        return x.get()
+    except AttributeError:
+        return x
 
 
 def plot_spectrogram(
