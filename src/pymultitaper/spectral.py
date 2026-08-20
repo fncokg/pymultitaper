@@ -1,77 +1,9 @@
-import warnings
 from typing import Literal, Tuple, Optional, Union
 
-from numpy.typing import NDArray
-import matplotlib.pyplot as plt
-
-# CPU backend
 import numpy as np
-import scipy.signal as sci_signal
-import scipy.fft as sci_fft
+from numpy.typing import NDArray
 
-# GPU backend
-try:
-    import cupy as cp
-
-    # `import cupyx.scipy.signal` raises a FutureWarning.
-    # See [Issue #8718](https://github.com/cupy/cupy/issues/8718) of `cupy` for details.
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=FutureWarning)
-        import cupyx.scipy.signal as cp_signal
-
-    import cupyx.scipy.fft as cp_fft
-
-    def _cp_dpss_windows(*args, **kwargs):
-        # cupyx does not have dpss implementation
-        # currently, we compute the dpss windows on CPU and transfer to GPU, which is not very efficient, but should be fine for most use cases since the number of tapers is usually small
-        tapers, eigns = sci_signal.windows.dpss(*args, **kwargs)
-        return cp.asarray(tapers), cp.asarray(eigns)
-
-    cp_signal.windows.dpss = _cp_dpss_windows
-except ImportError:
-    cp = None
-    cp_signal = None
-    cp_fft = None
-
-
-class ArrayBackend:
-    def __init__(self, backend: Literal["numpy", "cupy"]):
-        self.backend = backend
-        if backend == "numpy":
-            self.xp = np
-            self.signal = sci_signal
-            self.fft = sci_fft
-        elif backend == "cupy":
-            if cp is None:
-                raise ImportError(
-                    "cupy is not installed, so the GPU backend is unavailable"
-                )
-            self.xp = cp
-            self.signal = cp_signal
-            self.fft = cp_fft
-        else:
-            raise ValueError(f"Unsupported backend: {backend}")
-
-    @staticmethod
-    def like(arr):
-        if isinstance(arr, np.ndarray):
-            return ArrayBackend("numpy")
-        elif cp is not None and isinstance(arr, cp.ndarray):
-            return ArrayBackend("cupy")
-        else:
-            raise ValueError(f"Unsupported array type: {type(arr)}")
-
-    def __eq__(self, other):
-        return self.backend == other.backend
-
-
-# A decorator letting the function accept an additional `like` argument to specify the backend based on the input array type.
-def backend_like(func):
-    def wrapper(*args, like=None, **kwargs):
-        backend = ArrayBackend.like(like) if like is not None else ArrayBackend("numpy")
-        return func(*args, backend=backend, **kwargs)
-
-    return wrapper
+from .backend import ArrayBackend, backend_like
 
 
 @backend_like
@@ -205,7 +137,7 @@ def _spectrogram(
     if db_scale:
         psd_data = 10 * backend.xp.log10(psd_data / p_ref**2)
     # (...,nfft,n_frames)
-    psd_data = np.swapaxes(psd_data, -1, -2)
+    psd_data = backend.xp.swapaxes(psd_data, -1, -2)
     return freqs, times, psd_data
 
 
@@ -343,87 +275,3 @@ def spectrogram(
         p_ref=p_ref,
         boundary_pad=boundary_pad,
     )
-
-
-# A helper function to convert cupy arrays to numpy arrays for plotting
-_as_np = lambda x: x.get() if isinstance(x, cp.ndarray) else x
-
-
-def plot_spectrogram(
-    times: NDArray,
-    freqs: NDArray,
-    psd: NDArray,
-    ax: Optional[plt.Axes] = None,
-    **kwargs,
-) -> tuple:
-    """
-    Plot the spectrogram.
-
-    Note: Convert the spectrogram to dB scale (set `db_scale` to `True` in the spectrogram functions, or convert it manually) before plotting, otherwise the plot may not be very informative.
-
-    Args:
-        times (n_frames,): Time points of each frame
-        freqs (n_freqs,): Frequency points of the spectrogram
-        psd (n_freqs,n_frames): PSD spectrogram
-        ax (Optional[plt.Axes], optional): The Axes object to plot the spectrogram. If `None`, a new figure will be created. Defaults to None.
-        **kwargs: Additional arguments to `ax.pcolormesh`
-
-    Returns:
-        fig (plt.Figure): The figure object
-        ax (plt.Axes): The Axes object
-
-    Examples:
-        >>> f,ax = plt.subplots(1,1)
-        >>> plot_spectrogram(times,freqs,psd,ax=ax,cmap="viridis")
-    """
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = ax.figure
-    times, freqs, psd = map(_as_np, [times, freqs, psd])
-    mesh = ax.pcolormesh(times, freqs, psd, **kwargs)
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Frequency (Hz)")
-    fig.colorbar(mesh, ax=ax)
-    return fig, ax
-
-
-def plot_spectrum(
-    times: NDArray,
-    freqs: NDArray,
-    psd: NDArray,
-    time: float,
-    ax: Optional[plt.Axes] = None,
-    **kwargs,
-) -> tuple:
-    """
-
-    Plot the spectrum at a specific time point.
-
-    Args:
-        times (n_frames,): Time points of each frame
-        freqs (n_freqs,): Frequency points of the spectrogram
-        psd (n_freqs,n_frames): PSD spectrogram
-        time (float): The time point to plot the spectrum
-        ax (Optional[plt.Axes], optional): The Axes object to plot the spectrum. If `None`, a new figure will be created. Defaults to None.
-        **kwargs: Additional arguments to `ax.plot`
-
-    Returns:
-        fig (plt.Figure): The figure object
-        ax (plt.Axes): The Axes object
-
-    Examples:
-        >>> f,ax = plt.subplots(1,1)
-        >>> plot_spectrum(times,freqs,psd,time=0.7,ax=ax)
-    """
-    if ax is None:
-        fig, ax = plt.subplots()
-    else:
-        fig = ax.figure
-    times, freqs, psd = map(_as_np, [times, freqs, psd])
-    idx = np.argmin(np.abs(times - time))
-    ax.plot(freqs, psd[:, idx], **kwargs)
-    ax.set_xlabel("Frequency (Hz)")
-    ax.set_ylabel("PSD")
-    ax.set_title(f"Spectrum at time {time}s")
-    return fig, ax
