@@ -2,13 +2,14 @@ from typing import Literal, Optional
 import numpy as np
 from numpy.typing import NDArray
 from .backend import ArrayBackend
+from .spectral import spectrogram, multitaper_spectrogram
 
 
-# TODO: we need the mask array of framed results, not of the raw signal.
 def batch_signals(
     signal_list: list,
     padding_strategy: Literal["max", "max_length"] = "max",
     max_length: Optional[int] = None,
+    detrend: Literal["off", "linear", "constant"] = "off",
     return_mask: bool = False,
 ) -> NDArray:
     """
@@ -22,6 +23,7 @@ def batch_signals(
             - "max_length": Pad all signals to the specified `max_length`. If a signal is longer than `max_length`, it will be truncated.
 
         max_length (int, optional): The maximum length to pad/truncate signals to when using the "max_length" strategy. Required if `padding_strategy` is "max_length".
+        detrend (str): Detrending method to apply to each signal before padding.
         return_mask (bool): If True, also return a boolean mask indicating the valid (non-padded) entries in the output array.
 
     Returns:
@@ -46,10 +48,12 @@ def batch_signals(
     batched_array = backend.xp.zeros(
         (len(signal_list), max_len), dtype=signal_list[0].dtype
     )
-    mask = backend.xp.zeros((len(signal_list), max_len), dtype=backend.xp.int8)
+    mask = backend.xp.zeros((len(signal_list), max_len), dtype=backend.xp.bool)
 
     for i, signal in enumerate(signal_list):
         length = min(signal.shape[0], max_len)
+        if detrend != "off":
+            signal = backend.signal.detrend(signal, type=detrend)
         batched_array[i, :length] = signal[:length]
         mask[i, :length] = 1
 
@@ -73,9 +77,81 @@ def frame_masking(mask, fs, time_step, window_length=None, boundary_pad=False):
     frames = backend.xp.lib.stride_tricks.sliding_window_view(
         mask, n_winlen, writeable=False, axis=-1
     )[..., ::n_tstep, :]
-    frame_mask = backend.xp.empty_like(frames, dtype=backend.xp.int8)
     if boundary_pad:
-        backend.xp.any(frames == 1, axis=-1, out=frame_mask)
+        frame_mask = backend.xp.any(frames, axis=-1)
     else:
-        backend.xp.all(frames == 1, axis=-1, out=frame_mask)
+        frame_mask = backend.xp.all(frames, axis=-1)
     return frame_mask
+
+
+def _batch_spectrogram(
+    signal_list: list,
+    spectrogram_func: callable,
+    fs: float,
+    time_step: float,
+    window_length: Optional[float] = None,
+    detrend: Literal["off", "linear", "constant"] = "off",
+    boundary_pad: bool = False,
+    **kwargs,
+):
+    batched_array, mask = batch_signals(signal_list, detrend=detrend, return_mask=True)
+    freqs, times, spec = spectrogram_func(
+        batched_array,
+        fs=fs,
+        time_step=time_step,
+        window_length=window_length,
+        detrend="off",
+        boundary_pad=boundary_pad,
+        **kwargs,
+    )
+    frame_mask = frame_masking(
+        mask, fs, time_step, window_length=window_length, boundary_pad=boundary_pad
+    )
+    spec_list = []
+    time_list = []
+    for i in range(len(signal_list)):
+        spec_list.append(spec[i][:, frame_mask[i]])
+        time_list.append(times[frame_mask[i]])
+    return freqs, time_list, spec_list
+
+
+def batch_spectrogram(
+    signal_list: list,
+    fs: float,
+    time_step: float,
+    window_length: Optional[float] = None,
+    detrend: Literal["off", "linear", "constant"] = "off",
+    boundary_pad: bool = False,
+    **kwargs,
+):
+    return _batch_spectrogram(
+        signal_list,
+        spectrogram_func=spectrogram,
+        fs=fs,
+        time_step=time_step,
+        window_length=window_length,
+        detrend=detrend,
+        boundary_pad=boundary_pad,
+        **kwargs,
+    )
+
+
+def batch_multitaper_spectrogram(
+    signal_list: list,
+    fs: float,
+    time_step: float,
+    window_length: Optional[float] = None,
+    detrend: Literal["off", "linear", "constant"] = "off",
+    boundary_pad: bool = False,
+    **kwargs,
+):
+    return _batch_spectrogram(
+        signal_list,
+        spectrogram_func=multitaper_spectrogram,
+        fs=fs,
+        time_step=time_step,
+        window_length=window_length,
+        detrend=detrend,
+        boundary_pad=boundary_pad,
+        **kwargs,
+    )
