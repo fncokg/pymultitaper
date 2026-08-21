@@ -47,14 +47,18 @@ GPU usage is automatic: **CuPy arrays in, CuPy arrays out**. Just pass a CuPy ar
 ... )
 ```
 
-When processing multiple signals of varying lengths, you can try the batched version of the spectrogram functions. The signals will be padded to a common size and processed in a single batch:
+When processing multiple signals (possibly of varying lengths), you can try the batched version of the spectrogram functions:
 
 ```python
 >>> signal_list = [cp.asarray(data[:200]), cp.asarray(data[:160]), cp.asarray(data[:240])]
->>> freqs, time_list, psd_list = batched_multitaper_spectrogram(signal_list, fs, time_step=0.01)
+>>> freqs, time_list, psd_list = batched_multitaper_spectrogram(signal_list, fs, time_step=0.01, mode="chunk_batched")
 ```
 
-Note that the batch-trick is NOT ALWASY FASTER than processing signals one by one even in GPU environments. It is recommended to benchmark your specific use case.
+You can control execution with `mode="auto" | "loop" | "batched" | "chunk_batched"` (default: `"auto"`):
+- `auto`: uses `chunk_batched` on GPU and `loop` on CPU.
+- `loop`: compute each signal independently.
+- `batched`: pad all signals to a common length and run one batched call.
+- `chunk_batched`: split signals into chunks of similar lengths, and batch-process each chunk to minimize padding overhead. Chunk size can be controlled with the `chunk_size` argument, which defaults to `n_signals // 10`.
 
 **NOTE: GPU support requires `CuPy`, which is not included in the `pymultitaper` package**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
 

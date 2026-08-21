@@ -69,11 +69,10 @@ def sig(xp, sample_rate):
 
 @pytest.fixture
 def sig_list(xp, sample_rate):
+    rng = xp.random.default_rng(42)
+    durations = rng.integers(10, 30, size=TEST_PARAMS["default_signal_count"]) / 10
     return (
-        [
-            white_noise_signal_gen(xp, sample_rate, TEST_PARAMS["default_duration"])
-            for _ in range(TEST_PARAMS["default_signal_count"])
-        ],
+        [white_noise_signal_gen(xp, sample_rate, duration) for duration in durations],
         sample_rate,
         xp,
     )

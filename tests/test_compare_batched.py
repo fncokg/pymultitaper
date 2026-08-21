@@ -19,14 +19,20 @@ from pymultitaper import (
     ids=lambda v: f"{v[0].__name__}_vs_{v[1].__name__}",
 )
 @pytest.mark.parametrize("detrend", ["off", "constant", "linear"])
-@pytest.mark.parametrize("boundary_pad", [True, False])
+@pytest.mark.parametrize(
+    "boundary_pad", [True, False], ids=lambda v: "padded" if v else ""
+)
 @pytest.mark.parametrize("time_step, window_length", ts_wl_gen())
+@pytest.mark.parametrize(
+    "mode", ["loop", "batched", "chunk_batched"], ids=lambda v: f"mode_{v}"
+)
 def test_compare_batched_spectrogram(
     func_pair,
     detrend,
     boundary_pad,
     time_step,
     window_length,
+    mode,
     sig_list,
 ):
     """Test that batched_spectrogram matches individual spectrogram calls."""
@@ -44,7 +50,7 @@ def test_compare_batched_spectrogram(
 
     single_func, batch_func = func_pair
 
-    b_freqs, b_time_list, b_spec_list = batch_func(data_list, **kwargs)
+    b_freqs, b_time_list, b_spec_list = batch_func(data_list, mode=mode, **kwargs)
 
     time_list, spec_list = [], []
     for data in data_list:
