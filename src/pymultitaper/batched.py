@@ -108,21 +108,22 @@ def _batched(func):
 @_batched
 def batched_spectrogram(*args, **kwargs):
     """
-        Compute spectrograms for a list of signals with selectable execution mode.
+    Compute spectrograms for a list of signals with selectable execution mode.
 
-        This function accepts a list of 1D signals of varying lengths and supports
-        four execution strategies through ``mode``:
-        - ``"auto"``: select ``"loop"`` for NumPy or ``"chunk_batched"`` for CuPy.
-        - ``"loop"``: compute each signal independently.
-        - ``"batched"``: pad all signals to a common length and run one batched call.
-        - ``"chunk_batched"``: split signals into chunks of similar
-            lengths, and batch-process each chunk to minimize padding overhead. Chunk size can be controlled with the ``chunk_size`` argument, which defaults to ``n_signals // 10``.
+    This function accepts a list of 1D signals of varying lengths and supports
+    four execution strategies through ``mode``:
 
-        Spectrogram computation is otherwise identical to
-        [`spectrogram`][src.pymultitaper.spectral.spectrogram], and returned results
-        correspond to each input signal's valid frames.
+    - ``"auto"``: select ``"loop"`` for NumPy or ``"chunk_batched"`` for CuPy.
+    - ``"loop"``: compute each signal independently.
+    - ``"batched"``: pad all signals to a common length and run one batched call.
+    - ``"chunk_batched"``: split signals into chunks of similar
+        lengths, and batch-process each chunk to minimize padding overhead. Chunk size can be controlled with the ``chunk_size`` argument, which defaults to ``n_signals // 10``.
 
-        The computation backend (CPU or GPU) is determined by the input array type.
+    Spectrogram computation is otherwise identical to
+    [`spectrogram`][src.pymultitaper.spectral.spectrogram], and returned results
+    correspond to each input signal's valid frames.
+
+    The computation backend (CPU or GPU) is determined by the input array type.
 
     Args:
         signal_list (list): A list of 1D NumPy or CuPy arrays of any length.
@@ -159,8 +160,9 @@ def batched_spectrogram(*args, **kwargs):
 
     Examples:
         >>> from pymultitaper import batched_spectrogram
-        >>> signals = [np.random.randn(200), np.random.randn(150)]
-        >>> freqs, times, specs = batched_spectrogram(signals, fs=1000, time_step=0.01)
+        >>> n_samples = cp.random.randint(100, 200, size=100)
+        >>> signals = [cp.random.randn(n) for n in n_samples]
+        >>> freqs, times, specs = batched_spectrogram(signals, mode="chunk_batched",chunk_size=10, fs=1000, time_step=0.01)
         >>> len(specs), len(times)
         (2, 2)
     """
@@ -170,22 +172,23 @@ def batched_spectrogram(*args, **kwargs):
 @_batched
 def batched_multitaper_spectrogram(*args, **kwargs):
     """
-        Compute multitaper spectrograms for a list of signals with selectable
-        execution mode.
+    Compute multitaper spectrograms for a list of signals with selectable
+    execution mode.
 
-        This function accepts a list of 1D signals of varying lengths and supports
-        four execution strategies through ``mode``:
-        - ``"auto"``: automatically select ``"loop"`` for NumPy or ``"chunk_batched"`` for CuPy.
-        - ``"loop"``: compute each signal independently.
-        - ``"batched"``: pad all signals to a common length and run one batched call.
-        - ``"chunk_batched"``: split signals into chunks of similar
-            lengths, and batch-process each chunk to minimize padding overhead. Chunk size can be controlled with the ``chunk_size`` argument, which defaults to ``n_signals // 10``.
+    This function accepts a list of 1D signals of varying lengths and supports
+    four execution strategies through ``mode``:
 
-        Spectrogram computation is otherwise identical to
-        [`multitaper_spectrogram`][src.pymultitaper.spectral.multitaper_spectrogram],
-        and returned results correspond to each input signal's valid frames.
+    - ``"auto"``: automatically select ``"loop"`` for NumPy or ``"chunk_batched"`` for CuPy.
+    - ``"loop"``: compute each signal independently.
+    - ``"batched"``: pad all signals to a common length and run one batched call.
+    - ``"chunk_batched"``: split signals into chunks of similar
+        lengths, and batch-process each chunk to minimize padding overhead. Chunk size can be controlled with the ``chunk_size`` argument, which defaults to ``n_signals // 10``.
 
-        The computation backend (CPU or GPU) is determined by the input array type.
+    Spectrogram computation is otherwise identical to
+    [`multitaper_spectrogram`][src.pymultitaper.spectral.multitaper_spectrogram],
+    and returned results correspond to each input signal's valid frames.
+
+    The computation backend (CPU or GPU) is determined by the input array type.
 
     Args:
         signal_list (list): A list of 1D NumPy or CuPy arrays of any length.
@@ -226,8 +229,9 @@ def batched_multitaper_spectrogram(*args, **kwargs):
 
     Examples:
         >>> from pymultitaper import batched_multitaper_spectrogram
-        >>> signals = [np.random.randn(200), np.random.randn(150)]
-        >>> freqs, times, specs = batched_multitaper_spectrogram(signals, fs=1000, time_step=0.01, NW=4)
+        >>> n_samples = cp.random.randint(100, 200, size=100)
+        >>> signals = [cp.random.randn(n) for n in n_samples]
+        >>> freqs, times, specs = batched_multitaper_spectrogram(signals, mode="chunk_batched",chunk_size=10, fs=1000, time_step=0.01, NW=4)
         >>> len(specs), len(times)
         (2, 2)
     """
