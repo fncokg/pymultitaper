@@ -1,114 +1,8 @@
 from typing import Literal, Optional
 from functools import wraps
 
-import numpy as np
-from numpy.typing import NDArray
-
 from .backend import ArrayBackend
 from .spectral import spectrogram, multitaper_spectrogram
-
-
-def batch_signals(
-    signal_list: list,
-    padding_strategy: Literal["max", "max_length"] = "max",
-    max_length: Optional[int] = None,
-    return_mask: bool = False,
-) -> NDArray:
-    """
-    Convert a list of 1D signals into a padded 2D array.
-
-    The computation backend (CPU or GPU) is automatically determined by the type of the input arrays.
-
-    Args:
-        signal_list (list): A list of 1D NumPy or CuPy arrays.
-        padding_strategy (str): The padding strategy. Options are:
-
-            - ``"max"``: Pad all signals to the length of the longest signal.
-            - ``"max_length"``: Pad or truncate all signals to ``max_length``.
-
-        max_length (int, optional): The target length when using
-            ``"max_length"``. Required if ``padding_strategy`` is
-            ``"max_length"``.
-        return_mask (bool, optional): Whether to also return a boolean mask
-            indicating valid, non-padded entries. Defaults to ``False``.
-
-    Returns:
-        NDArray: A 2D array of shape ``(n_signals, max_len)``.
-        NDArray, optional: A boolean mask of the same shape when
-            ``return_mask`` is ``True``.
-
-    Examples:
-        >>> signals = [np.arange(3), np.arange(5)]
-        >>> batch_signals(signals).shape
-        (2, 5)
-    """
-
-    if padding_strategy == "max":
-        max_len = max(signal.shape[0] for signal in signal_list)
-    elif padding_strategy == "max_length":
-        if max_length is None:
-            raise ValueError(
-                "`max_length` must be specified when using 'max_length' padding strategy."
-            )
-        max_len = max_length
-    else:
-        raise ValueError(f"Unsupported padding strategy: {padding_strategy}")
-
-    # Determine the backend based on the first signal
-    backend = ArrayBackend.like(signal_list[0])
-
-    # Create an empty array with the appropriate shape and backend
-    batched_array = backend.xp.zeros(
-        (len(signal_list), max_len), dtype=signal_list[0].dtype
-    )
-    mask = backend.xp.zeros((len(signal_list), max_len), dtype=backend.xp.bool)
-
-    for i, signal in enumerate(signal_list):
-        length = min(signal.shape[0], max_len)
-        batched_array[i, :length] = signal[:length]
-        mask[i, :length] = 1
-
-    if return_mask:
-        return batched_array, mask
-    return batched_array
-
-
-def frame_masking(mask, fs, time_step, window_length=None, boundary_pad=False):
-    """
-    Compute which spectrogram frames are valid for each padded signal.
-
-    Args:
-        mask (NDArray): A boolean mask with shape ``(n_signals, n_samples)``.
-        fs (float): Sampling frequency.
-        time_step (float): Time step between spectrogram frames in seconds.
-        window_length (float, optional): Window length in seconds. If
-            ``None``, ``time_step`` is used. Defaults to ``None``.
-        boundary_pad (bool, optional): Whether the original signals were
-            boundary padded before framing. Defaults to ``False``.
-
-    Returns:
-        NDArray: A boolean array of shape ``(n_signals, n_frames)`` indicating
-        which frames are valid.
-    """
-    window_length = window_length if window_length is not None else time_step
-    n_tstep = int(time_step * fs)
-    n_winlen = int(window_length * fs)
-    backend = ArrayBackend.like(mask)
-    if boundary_pad:
-        n_pad = int(n_winlen / 2) + 1
-        pad_width = [(0, 0)] * mask.ndim
-        pad_width[-1] = (n_pad, n_pad)
-        mask = backend.xp.pad(
-            mask, pad_width=pad_width, mode="constant", constant_values=False
-        )
-    frames = backend.xp.lib.stride_tricks.sliding_window_view(
-        mask, n_winlen, writeable=False, axis=-1
-    )[..., ::n_tstep, :]
-    if boundary_pad:
-        frame_mask = backend.xp.any(frames, axis=-1)
-    else:
-        frame_mask = backend.xp.all(frames, axis=-1)
-    return frame_mask
 
 
 def _batched(func):
@@ -129,7 +23,16 @@ def _batched(func):
         boundary_pad: bool = False,
         **kwargs,
     ):
-        batched_array, mask = batch_signals(signal_list, return_mask=True)
+        lens = [signal.shape[0] for signal in signal_list]
+        max_len = max(lens)
+
+        backend = ArrayBackend.like(signal_list[0])
+        batched_array = backend.xp.zeros(
+            (len(signal_list), max_len), dtype=signal_list[0].dtype
+        )
+        for i, (signal, length) in enumerate(zip(signal_list, lens)):
+            batched_array[i, :length] = signal
+
         freqs, times, spec = func(
             batched_array,
             fs=fs,
@@ -139,14 +42,12 @@ def _batched(func):
             boundary_pad=boundary_pad,
             **kwargs,
         )
-        frame_mask = frame_masking(
-            mask, fs, time_step, window_length=window_length, boundary_pad=boundary_pad
-        )
+
         spec_list = []
         time_list = []
-        for i in range(len(signal_list)):
-            spec_list.append(spec[i][:, frame_mask[i]])
-            time_list.append(times[frame_mask[i]])
+        for i, length in enumerate(lens):
+            spec_list.append(spec[i, :, :length])
+            time_list.append(times[:length])
         return freqs, time_list, spec_list
 
     return wrapper
