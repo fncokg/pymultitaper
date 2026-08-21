@@ -56,7 +56,7 @@ def _batched(func):
 @_batched
 def batched_spectrogram(*args, **kwargs):
     """
-    Compute spectrograms for a list of signals with automatic batching. This is useful for speeding up computations when processing multiple signals, especially on GPUs.
+    Compute spectrograms for a list of signals with automatic batching. This may be useful for speeding up computations when processing multiple signals, especially on GPUs.
 
     This function accepts a list of 1D signals of varying lengths and pads them to a common size for efficient batch processing.  Spectrogram computation is otherwise identical to [`spectrogram`][src.pymultitaper.spectral.spectrogram], and results correspond to each input signal's valid frames.
 
@@ -101,7 +101,7 @@ def batched_spectrogram(*args, **kwargs):
 @_batched
 def batched_multitaper_spectrogram(*args, **kwargs):
     """
-    Compute multitaper spectrograms for a list of signals with automatic batching. This is useful for speeding up computations when processing multiple signals, especially on GPUs.
+    Compute multitaper spectrograms for a list of signals with automatic batching. This may be useful for speeding up computations when processing multiple signals, especially on GPUs.
 
     This function accepts a list of 1D signals of varying lengths and pads them to a common size for efficient batch processing. Spectrogram computation is otherwise identical to [`multitaper_spectrogram`][src.pymultitaper.spectral.multitaper_spectrogram], and results correspond to each input signal's valid frames.
 

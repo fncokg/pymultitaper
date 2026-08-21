@@ -37,15 +37,6 @@ Multidimensional inputs are supported. The last dimension is treated as time and
 >>> psd.shape  # (8, n_freqs, n_frames)
 ```
 
-For a list of short signals, use the batched helpers:
-
-```python
->>> from pymultitaper import batched_spectrogram
->>> signal_list = [np.random.randn(200), np.random.randn(160), np.random.randn(240)]
->>> fs = 1000
->>> freqs, time_list, spec_list = batched_spectrogram(signal_list, fs, time_step=0.01)
-```
-
 # GPU Support
 
 GPU usage is automatic: **CuPy arrays in, CuPy arrays out**. Just pass a CuPy array into the spectrogram functions, and `pymultitaper` will use the GPU backend.
@@ -60,14 +51,14 @@ GPU usage is automatic: **CuPy arrays in, CuPy arrays out**. Just pass a CuPy ar
 ... )
 ```
 
-The batched helpers are especially useful on GPU because they reduce repeated small-kernel overhead:
+When processing multiple signals of varying lengths, you can try the batched version of the spectrogram functions. The signals will be padded to a common size and processed in a single batch:
 
 ```python
 >>> signal_list = [cp.asarray(data[:200]), cp.asarray(data[:160]), cp.asarray(data[:240])]
 >>> freqs, time_list, psd_list = batched_multitaper_spectrogram(signal_list, fs, time_step=0.01)
 ```
 
-`batched_multitaper_spectrogram` and `batched_spectrogram` accept a list of 1D signals of varying lengths and **pads them to a common size for efficient batch processing**.
+Note that the batch-trick is NOT ALWASY FASTER than processing signals one by one even in GPU environments. It is recommended to benchmark your specific use case.
 
 **NOTE: GPU support requires `CuPy`, which is not included in the `pymultitaper` package**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
 
