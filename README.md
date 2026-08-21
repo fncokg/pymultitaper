@@ -2,8 +2,7 @@
   <img src="https://github.com/fncokg/pymultitaper/blob/master/spectrogram.jpg?raw=true" />
 </p>
 
-# pymultitaper
-
+# Introduction
 
 `pymultitaper` is a fast and easy-to-use small package for multitaper spectrogram/spectrum calculation on both CPU and GPU, as well as oridnary (single-taper) spectrogram calculation.
 
@@ -11,7 +10,7 @@
 
 Install via pip:
 
-```
+```bash
 pip install pymultitaper
 ```
 
@@ -19,21 +18,21 @@ pip install pymultitaper
 
 ```python
 >>> from pymultitaper import multitaper_spectrogram, plot_spectrogram
->>> from scipy.io import wavfile
->>> fs, data = wavfile.read('test.wav')
+>>> fs = 1000
+>>> data = np.random.randn(2000)
 >>> freqs,times,psd = multitaper_spectrogram(
 ...     data, fs,time_step=0.001,window_length=0.005,NW=4
 ... )
 >>> fig,ax = plot_spectrogram(times,freqs,psd,cmap="viridis")
 ```
 
-Multidimensional inputs are supported. The last dimension is treated as time and preserved in the output:
+Multidimensional inputs are supported. The last dimension is treated as time and the output preserves the leading dimensions:
 
 ```python
 >>> import numpy as np
+>>> from pymultitaper import spectrogram
 >>> fs = 1000
 >>> data = np.random.randn(8, 2000)
->>> from pymultitaper import spectrogram
 >>> freqs, times, psd = spectrogram(data, fs, time_step=0.01)
 >>> psd.shape  # (8, n_freqs, n_frames)
 ```
@@ -49,24 +48,17 @@ For a list of short signals, use the batched helpers:
 
 # GPU Support
 
-**GPU support requires `CuPy`**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
-
-GPU usage is automatic: if you pass a CuPy array into the spectrogram functions, `pymultitaper` will use the GPU backend. NumPy arrays still use the CPU backend.
+GPU usage is automatic: **CuPy arrays in, CuPy arrays out**. Just pass a CuPy array into the spectrogram functions, and `pymultitaper` will use the GPU backend.
 
 ```python
 >>> import cupy as cp
 >>> from pymultitaper import multitaper_spectrogram, batched_multitaper_spectrogram
->>> from scipy.io import wavfile
->>> fs, data = wavfile.read("test.wav")
->>> data_gpu = cp.asarray(data)
+>>> data_gpu = cp.random.randn(2000)
+>>> fs = 1000
 >>> freqs, times, psd = multitaper_spectrogram(
 ...     data_gpu, fs, time_step=0.001, window_length=0.005, NW=4
 ... )
->>> psd.shape
-(len(freqs), len(times))
 ```
-
-The returned arrays stay on the GPU until you explicitly move them back to NumPy, for example with `cp.asnumpy(...)`, before plotting.
 
 The batched helpers are especially useful on GPU because they reduce repeated small-kernel overhead:
 
@@ -74,6 +66,10 @@ The batched helpers are especially useful on GPU because they reduce repeated sm
 >>> signal_list = [cp.asarray(data[:200]), cp.asarray(data[:160]), cp.asarray(data[:240])]
 >>> freqs, time_list, psd_list = batched_multitaper_spectrogram(signal_list, fs, time_step=0.01)
 ```
+
+`batched_multitaper_spectrogram` and `batched_spectrogram` accept a list of 1D signals of varying lengths and **pads them to a common size for efficient batch processing**.
+
+**NOTE: GPU support requires `CuPy`, which is not included in the `pymultitaper` package**. For installation instructions, see the [CuPy documentation](https://docs.cupy.dev/en/stable/install.html).
 
 # Algorithm Consistency
 
