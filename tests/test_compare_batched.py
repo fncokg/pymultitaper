@@ -3,9 +3,9 @@ import pytest
 from conftest import ts_wl_gen
 
 from pymultitaper import (
-    batch_spectrogram,
+    batched_spectrogram,
     spectrogram,
-    batch_multitaper_spectrogram,
+    batched_multitaper_spectrogram,
     multitaper_spectrogram,
 )
 
@@ -13,8 +13,8 @@ from pymultitaper import (
 @pytest.mark.parametrize(
     "func_pair",
     [
-        (spectrogram, batch_spectrogram),
-        (multitaper_spectrogram, batch_multitaper_spectrogram),
+        (spectrogram, batched_spectrogram),
+        (multitaper_spectrogram, batched_multitaper_spectrogram),
     ],
     ids=lambda v: f"{v[0].__name__}_vs_{v[1].__name__}",
 )
@@ -29,7 +29,7 @@ def test_compare_batched_spectrogram(
     window_length,
     sig_list,
 ):
-    """Test that batch_spectrogram matches individual spectrogram calls."""
+    """Test that batched_spectrogram matches individual spectrogram calls."""
     # Generate white noise signal list
     data_list, fs, xp = sig_list
 
