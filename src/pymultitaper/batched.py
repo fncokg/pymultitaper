@@ -1,6 +1,9 @@
 from typing import Literal, Optional
+from functools import wraps
+
 import numpy as np
 from numpy.typing import NDArray
+
 from .backend import ArrayBackend
 from .spectral import spectrogram, multitaper_spectrogram
 
@@ -9,7 +12,6 @@ def batch_signals(
     signal_list: list,
     padding_strategy: Literal["max", "max_length"] = "max",
     max_length: Optional[int] = None,
-    detrend: Literal["off", "linear", "constant"] = "off",
     return_mask: bool = False,
 ) -> NDArray:
     """
@@ -23,7 +25,6 @@ def batch_signals(
             - "max_length": Pad all signals to the specified `max_length`. If a signal is longer than `max_length`, it will be truncated.
 
         max_length (int, optional): The maximum length to pad/truncate signals to when using the "max_length" strategy. Required if `padding_strategy` is "max_length".
-        detrend (str): Detrending method to apply to each signal before padding.
         return_mask (bool): If True, also return a boolean mask indicating the valid (non-padded) entries in the output array.
 
     Returns:
@@ -52,8 +53,6 @@ def batch_signals(
 
     for i, signal in enumerate(signal_list):
         length = min(signal.shape[0], max_len)
-        if detrend != "off":
-            signal = backend.signal.detrend(signal, type=detrend)
         batched_array[i, :length] = signal[:length]
         mask[i, :length] = 1
 
@@ -84,74 +83,45 @@ def frame_masking(mask, fs, time_step, window_length=None, boundary_pad=False):
     return frame_mask
 
 
-def _batch_spectrogram(
-    signal_list: list,
-    spectrogram_func: callable,
-    fs: float,
-    time_step: float,
-    window_length: Optional[float] = None,
-    detrend: Literal["off", "linear", "constant"] = "off",
-    boundary_pad: bool = False,
-    **kwargs,
-):
-    batched_array, mask = batch_signals(signal_list, detrend=detrend, return_mask=True)
-    freqs, times, spec = spectrogram_func(
-        batched_array,
-        fs=fs,
-        time_step=time_step,
-        window_length=window_length,
-        detrend="off",
-        boundary_pad=boundary_pad,
+def batched(func):
+    @wraps(func)
+    def wrapper(
+        signal_list: list,
+        fs: float,
+        time_step: float,
+        window_length: Optional[float] = None,
+        detrend: Literal["off", "linear", "constant"] = "off",
+        boundary_pad: bool = False,
         **kwargs,
-    )
-    frame_mask = frame_masking(
-        mask, fs, time_step, window_length=window_length, boundary_pad=boundary_pad
-    )
-    spec_list = []
-    time_list = []
-    for i in range(len(signal_list)):
-        spec_list.append(spec[i][:, frame_mask[i]])
-        time_list.append(times[frame_mask[i]])
-    return freqs, time_list, spec_list
+    ):
+        batched_array, mask = batch_signals(signal_list, return_mask=True)
+        freqs, times, spec = func(
+            batched_array,
+            fs=fs,
+            time_step=time_step,
+            window_length=window_length,
+            detrend=detrend,
+            boundary_pad=boundary_pad,
+            **kwargs,
+        )
+        frame_mask = frame_masking(
+            mask, fs, time_step, window_length=window_length, boundary_pad=boundary_pad
+        )
+        spec_list = []
+        time_list = []
+        for i in range(len(signal_list)):
+            spec_list.append(spec[i][:, frame_mask[i]])
+            time_list.append(times[frame_mask[i]])
+        return freqs, time_list, spec_list
+
+    return wrapper
 
 
-def batch_spectrogram(
-    signal_list: list,
-    fs: float,
-    time_step: float,
-    window_length: Optional[float] = None,
-    detrend: Literal["off", "linear", "constant"] = "off",
-    boundary_pad: bool = False,
-    **kwargs,
-):
-    return _batch_spectrogram(
-        signal_list,
-        spectrogram_func=spectrogram,
-        fs=fs,
-        time_step=time_step,
-        window_length=window_length,
-        detrend=detrend,
-        boundary_pad=boundary_pad,
-        **kwargs,
-    )
+@batched
+def batched_spectrogram(*args, **kwargs):
+    return spectrogram(*args, **kwargs)
 
 
-def batch_multitaper_spectrogram(
-    signal_list: list,
-    fs: float,
-    time_step: float,
-    window_length: Optional[float] = None,
-    detrend: Literal["off", "linear", "constant"] = "off",
-    boundary_pad: bool = False,
-    **kwargs,
-):
-    return _batch_spectrogram(
-        signal_list,
-        spectrogram_func=multitaper_spectrogram,
-        fs=fs,
-        time_step=time_step,
-        window_length=window_length,
-        detrend=detrend,
-        boundary_pad=boundary_pad,
-        **kwargs,
-    )
+@batched
+def batched_multitaper_spectrogram(*args, **kwargs):
+    return multitaper_spectrogram(*args, **kwargs)
