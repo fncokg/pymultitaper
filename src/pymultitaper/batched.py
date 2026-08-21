@@ -17,8 +17,7 @@ def batch_signals(
     """
     Convert a list of 1D signals into a padded 2D array.
 
-    The computation backend (CPU or GPU) is automatically determined by the
-    type of the input arrays.
+    The computation backend (CPU or GPU) is automatically determined by the type of the input arrays.
 
     Args:
         signal_list (list): A list of 1D NumPy or CuPy arrays.
@@ -158,13 +157,9 @@ def batched_spectrogram(*args, **kwargs):
     """
     Compute spectrograms for a list of signals with automatic batching. This is useful for speeding up computations when processing multiple signals, especially on GPUs.
 
-    This function accepts a list of 1D signals of varying lengths and pads them
-    to a common size for efficient batch processing. Spectrogram computation is
-    otherwise identical to :func:`spectrogram`, and results correspond to each
-    input signal's valid frames.
+    This function accepts a list of 1D signals of varying lengths and pads them to a common size for efficient batch processing.  Spectrogram computation is otherwise identical to [`spectrogram`][src.pymultitaper.spectral.spectrogram], and results correspond to each input signal's valid frames.
 
-    The computation backend (CPU or GPU) is automatically determined by the type
-    of the input arrays.
+    The computation backend (CPU or GPU) is automatically determined by the type of the input arrays.
 
     Args:
         signal_list (list): A list of 1D NumPy or CuPy arrays of any length.
@@ -207,13 +202,9 @@ def batched_multitaper_spectrogram(*args, **kwargs):
     """
     Compute multitaper spectrograms for a list of signals with automatic batching. This is useful for speeding up computations when processing multiple signals, especially on GPUs.
 
-    This function accepts a list of 1D signals of varying lengths and pads them
-    to a common size for efficient batch processing. Spectrogram computation is
-    otherwise identical to :func:`multitaper_spectrogram`, and results correspond
-    to each input signal's valid frames.
+    This function accepts a list of 1D signals of varying lengths and pads them to a common size for efficient batch processing. Spectrogram computation is otherwise identical to [`multitaper_spectrogram`][src.pymultitaper.spectral.multitaper_spectrogram], and results correspond to each input signal's valid frames.
 
-    The computation backend (CPU or GPU) is automatically determined by the type
-    of the input arrays.
+    The computation backend (CPU or GPU) is automatically determined by the type of the input arrays.
 
     Args:
         signal_list (list): A list of 1D NumPy or CuPy arrays of any length.

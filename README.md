@@ -5,14 +5,7 @@
 # pymultitaper
 
 
-`pymultitaper` is a fast and easy-to-use small package for multitaper spectrogram/spectrum calculation, as well as oridnary (single-taper) spectrogram calculation.
-
-Main updates:
-
-- `spectrogram` and `multitaper_spectrogram` accept arbitrary leading dimensions and keep them in the output.
-- `batched_spectrogram` and `batched_multitaper_spectrogram` speed up batch processing, especially for many short signals and GPU workloads.
-- The test suite covers batched consistency, `spectrogram` vs. SciPy, and `multitaper_spectrogram` vs. MATLAB.
-
+`pymultitaper` is a fast and easy-to-use small package for multitaper spectrogram/spectrum calculation on both CPU and GPU, as well as oridnary (single-taper) spectrogram calculation.
 
 # Installation
 

@@ -1,17 +1,22 @@
 API Reference
 =============
 
-Spectral functions
+Main
 ------------------
 
 ::: src.pymultitaper.spectral
 
-Batched helpers
+Batched
 ---------------
 
 ::: src.pymultitaper.batched
+    handler: python
+    options:
+        members:
+            - batched_multitaper_spectrogram
+            - batched_spectrogram
 
-Plotting helpers
+Plotting
 ----------------
 
 ::: src.pymultitaper.plot
