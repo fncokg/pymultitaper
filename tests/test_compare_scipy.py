@@ -3,35 +3,28 @@ import pytest
 from scipy import signal
 
 from pymultitaper import spectrogram
+from conftest import to_np, ts_wl_gen
 
 
-@pytest.mark.parametrize("window_length_multiplier", [1, 5, 25])
-def test_compare_scipy(window_length_multiplier, xp):
-
-    # convert results from xp backend to numpy for comparison
-    def to_np(a):
-        return xp.asnumpy(a) if hasattr(xp, "asnumpy") else a
-    
-    # white noise signal, 2s @8kHz
-    fs = 8000
-    x = xp.linspace(0, 2, 2 * fs)
-    data = xp.random.normal(size=len(x))
-    # 10ms frame length
-    ts = 0.01
-    wl = ts * window_length_multiplier
+@pytest.mark.parametrize("detrend", ["off", "constant", "linear"])
+@pytest.mark.parametrize("time_step, window_length", ts_wl_gen())
+def test_compare_scipy(detrend, time_step, window_length, sig):
+    """Compare pymultitaper spectrogram with scipy.signal.spectrogram."""
+    data, fs, xp = sig
 
     st_freqs, st_times, st_spec = spectrogram(
         data,
         fs=fs,
-        time_step=ts,
-        window_length=wl,
+        time_step=time_step,
+        window_length=window_length,
         db_scale=False,
+        detrend=detrend,
         boundary_pad=False,
     )
 
     # compute scipy reference with numpy arrays
-    n_ts = int(ts * fs)
-    n_wl = int(wl * fs)
+    n_ts = int(time_step * fs)
+    n_wl = int(window_length * fs)
     np_data = to_np(data)
     sc_freqs, sc_times, sc_spec = signal.spectrogram(
         np_data,
@@ -40,6 +33,7 @@ def test_compare_scipy(window_length_multiplier, xp):
         nfft=2 ** int(np.ceil(np.log2(n_wl))),
         noverlap=n_wl - n_ts,
         window="hamming",
+        detrend=False if detrend == "off" else detrend,
     )
 
     st_freqs = to_np(st_freqs)
